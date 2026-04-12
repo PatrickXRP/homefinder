@@ -95,16 +95,7 @@ class ScrapePropertiesJob implements ShouldQueue
 
                     $updated++;
                 } else {
-                    // Create new property
-                    $askingPrice = $listing['asking_price'] ?? null;
-                    $currency = $listing['currency'] ?? 'EUR';
-                    $askingPriceEur = $askingPrice ? CurrencyHelper::toEur($askingPrice, $currency) : null;
-                    $livingArea = $listing['living_area_m2'] ?? null;
-                    $pricePerM2 = ($askingPriceEur && $livingArea && $livingArea > 0)
-                        ? (int) round($askingPriceEur / $livingArea)
-                        : null;
-
-                    // Enrich from detail page if scraper supports it
+                    // Enrich from detail page first
                     $detail = [];
                     if (!empty($listing['url'])) {
                         try {
@@ -114,9 +105,14 @@ class ScrapePropertiesJob implements ShouldQueue
                         }
                     }
 
-                    // Merge listing + detail data (detail takes priority)
-                    $merged = array_merge($listing, array_filter($detail));
+                    // Merge listing + detail data (detail takes priority for empty fields)
+                    $merged = array_filter($listing) + array_filter($detail);
 
+                    // Calculate price from merged data
+                    $askingPrice = $merged['asking_price'] ?? null;
+                    $currency = $merged['currency'] ?? 'EUR';
+                    $askingPriceEur = $merged['asking_price_eur']
+                        ?? ($askingPrice ? CurrencyHelper::toEur($askingPrice, $currency) : null);
                     $livingArea = $merged['living_area_m2'] ?? null;
                     $plotArea = $merged['plot_area_m2'] ?? null;
                     $pricePerM2Merged = ($askingPriceEur && $livingArea && $livingArea > 0)
