@@ -46,6 +46,7 @@ class PropertySourceResource extends Resource
                 ->label('Scraper')
                 ->options([
                     'HemnetScraper' => 'Hemnet (Zweden)',
+                    'HomestraScraper' => 'Homestra (Internationaal)',
                 ]),
             Forms\Components\Toggle::make('is_active')
                 ->label('Actief')

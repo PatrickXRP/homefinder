@@ -7,6 +7,7 @@ use App\Models\PriceHistory;
 use App\Models\Property;
 use App\Models\PropertySource;
 use App\Services\HomeFinder\Scrapers\HemnetScraper;
+use App\Services\HomeFinder\Scrapers\HomestraScraper;
 use App\Services\HomeFinder\Scrapers\ScraperInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -103,26 +104,53 @@ class ScrapePropertiesJob implements ShouldQueue
                         ? (int) round($askingPriceEur / $livingArea)
                         : null;
 
+                    // Enrich from detail page if scraper supports it
+                    $detail = [];
+                    if (!empty($listing['url'])) {
+                        try {
+                            $detail = $scraper->scrapePropertyDetail($listing['url']);
+                        } catch (\Exception $e) {
+                            Log::warning("ScrapePropertiesJob: Detail fetch failed for {$listing['url']}: {$e->getMessage()}");
+                        }
+                    }
+
+                    // Merge listing + detail data (detail takes priority)
+                    $merged = array_merge($listing, array_filter($detail));
+
+                    $livingArea = $merged['living_area_m2'] ?? null;
+                    $plotArea = $merged['plot_area_m2'] ?? null;
+                    $pricePerM2Merged = ($askingPriceEur && $livingArea && $livingArea > 0)
+                        ? (int) round($askingPriceEur / $livingArea)
+                        : ($merged['price_per_m2'] ?? null);
+
                     Property::create([
                         'country_id' => $source->country_id,
                         'source_id' => $source->id,
-                        'name' => $listing['name'] ?? 'Onbekend',
+                        'name' => $merged['name'] ?? 'Onbekend',
                         'external_id' => $listing['external_id'],
-                        'url' => $listing['url'] ?? null,
+                        'url' => $merged['url'] ?? null,
                         'status' => 'gezien_online',
-                        'address' => $listing['address'] ?? null,
-                        'city' => $listing['city'] ?? null,
+                        'address' => $merged['address'] ?? null,
+                        'city' => $merged['city'] ?? null,
+                        'region' => $merged['region'] ?? null,
+                        'latitude' => $merged['latitude'] ?? null,
+                        'longitude' => $merged['longitude'] ?? null,
                         'asking_price' => $askingPrice,
                         'currency' => $currency,
                         'asking_price_eur' => $askingPriceEur,
-                        'price_per_m2' => $pricePerM2,
+                        'price_per_m2' => $pricePerM2Merged,
                         'living_area_m2' => $livingArea,
-                        'plot_area_m2' => $listing['plot_area_m2'] ?? null,
-                        'bedrooms' => $listing['bedrooms'] ?? null,
-                        'images' => $listing['images'] ?? null,
+                        'plot_area_m2' => $plotArea,
+                        'bedrooms' => $merged['bedrooms'] ?? null,
+                        'bathrooms' => $merged['bathrooms'] ?? null,
+                        'year_built' => $merged['year_built'] ?? null,
+                        'energy_class' => $merged['energy_class'] ?? null,
+                        'condition' => $merged['condition'] ?? null,
+                        'images' => $merged['images'] ?? null,
+                        'listed_date' => $merged['listed_date'] ?? now()->toDateString(),
                         'added_at' => now(),
-                        'listed_date' => now()->toDateString(),
                         'scraped_at' => now(),
+                        'raw_data' => $merged['raw_data'] ?? null,
                     ]);
 
                     $created++;
@@ -143,6 +171,7 @@ class ScrapePropertiesJob implements ShouldQueue
     {
         return match ($class) {
             'HemnetScraper' => new HemnetScraper(),
+            'HomestraScraper' => new HomestraScraper(),
             default => null,
         };
     }
