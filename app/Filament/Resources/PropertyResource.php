@@ -516,6 +516,20 @@ class PropertyResource extends Resource
                     ->label('Score')
                     ->formatStateUsing(fn (?int $state) => $state ? str_repeat('⭐', $state) : '-')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('swipe_score')
+                    ->label('👨‍👩‍👧')
+                    ->getStateUsing(function (Property $record) {
+                        $swipes = \App\Models\PhotoSwipe::where('property_id', $record->id)->get();
+                        if ($swipes->isEmpty()) return '-';
+                        $ratingValues = ['super_tof' => 5, 'leuk' => 4, 'gaat_wel' => 3, 'niet_leuk' => 2, 'bah' => 1];
+                        $avg = round($swipes->avg(fn ($s) => $ratingValues[$s->rating] ?? 3), 1);
+                        $kids = $swipes->groupBy('kid_name')->map(fn ($g) => round($g->avg(fn ($s) => $ratingValues[$s->rating] ?? 3), 1));
+                        $emojis = $kids->map(fn ($score, $name) => ($score >= 4 ? '😍' : ($score >= 3 ? '😐' : '👎')))->join('');
+                        return $avg . ' ' . $emojis;
+                    })
+                    ->sortable(query: function ($query, string $direction) {
+                        return $query->orderByRaw("(SELECT AVG(CASE rating WHEN 'super_tof' THEN 5 WHEN 'leuk' THEN 4 WHEN 'gaat_wel' THEN 3 WHEN 'niet_leuk' THEN 2 WHEN 'bah' THEN 1 ELSE 3 END) FROM photo_swipes WHERE photo_swipes.property_id = properties.id) {$direction} NULLS LAST");
+                    }),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state) => match ($state) {
@@ -547,15 +561,44 @@ class PropertyResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('country_id')
                     ->label('Land')
+                    ->multiple()
                     ->relationship('country', 'name'),
                 Tables\Filters\SelectFilter::make('region')
                     ->label('Provincie')
+                    ->multiple()
                     ->options(fn () => Property::whereNotNull('region')->where('region', '!=', '')->distinct()->orderBy('region')->pluck('region', 'region')->toArray())
                     ->searchable(),
                 Tables\Filters\SelectFilter::make('city')
                     ->label('Stad')
+                    ->multiple()
                     ->options(fn () => Property::whereNotNull('city')->where('city', '!=', '')->distinct()->orderBy('city')->pluck('city', 'city')->toArray())
                     ->searchable(),
+                Tables\Filters\SelectFilter::make('kid_likes')
+                    ->label('Kind likes')
+                    ->options(fn () => \App\Models\KidsAccount::where('is_active', true)->pluck('name', 'name')->toArray())
+                    ->query(function ($query, array $data) {
+                        if (empty($data['value'])) return;
+                        $query->whereIn('id', function ($sub) use ($data) {
+                            $sub->select('property_id')
+                                ->from('photo_swipes')
+                                ->where('kid_name', $data['value'])
+                                ->whereIn('rating', ['super_tof', 'leuk'])
+                                ->distinct();
+                        });
+                    }),
+                Tables\Filters\SelectFilter::make('kid_dislikes')
+                    ->label('Kind dislikes')
+                    ->options(fn () => \App\Models\KidsAccount::where('is_active', true)->pluck('name', 'name')->toArray())
+                    ->query(function ($query, array $data) {
+                        if (empty($data['value'])) return;
+                        $query->whereIn('id', function ($sub) use ($data) {
+                            $sub->select('property_id')
+                                ->from('photo_swipes')
+                                ->where('kid_name', $data['value'])
+                                ->whereIn('rating', ['niet_leuk', 'bah'])
+                                ->distinct();
+                        });
+                    }),
                 Tables\Filters\Filter::make('price_min')
                     ->form([
                         Forms\Components\TextInput::make('value')
