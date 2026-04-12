@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\WishResource\Pages;
 use App\Models\Wish;
 use Filament\Forms;
+use Filament\Actions;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -107,11 +108,11 @@ class WishResource extends Resource
             ->defaultGroup('category')
             ->reorderable('sort_order')
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

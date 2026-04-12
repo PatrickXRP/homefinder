@@ -6,6 +6,7 @@ use App\Filament\Resources\PropertyResource\Pages;
 use App\Helpers\CurrencyHelper;
 use App\Models\Property;
 use Filament\Forms;
+use Filament\Actions;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -323,11 +324,11 @@ class PropertyResource extends Resource
                     ->label('Steiger'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

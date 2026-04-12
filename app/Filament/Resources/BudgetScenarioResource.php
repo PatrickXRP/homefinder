@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BudgetScenarioResource\Pages;
 use App\Models\BudgetScenario;
 use Filament\Forms;
+use Filament\Actions;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -80,8 +81,8 @@ class BudgetScenarioResource extends Resource
                     ->money('EUR'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('activate')
+                Actions\EditAction::make(),
+                Actions\Action::make('activate')
                     ->label('Maak actief')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -93,8 +94,8 @@ class BudgetScenarioResource extends Resource
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

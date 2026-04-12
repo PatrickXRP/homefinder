@@ -6,6 +6,7 @@ use App\Filament\Resources\PropertySourceResource\Pages;
 use App\Jobs\ScrapePropertiesJob;
 use App\Models\PropertySource;
 use Filament\Forms;
+use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -81,7 +82,7 @@ class PropertySourceResource extends Resource
                     ->label('Woningen'),
             ])
             ->actions([
-                Tables\Actions\Action::make('scrape_now')
+                Actions\Action::make('scrape_now')
                     ->label('Nu scrapen')
                     ->icon('heroicon-o-play')
                     ->color('success')
@@ -93,11 +94,11 @@ class PropertySourceResource extends Resource
                             ->success()
                             ->send();
                     }),
-                Tables\Actions\EditAction::make(),
+                Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
