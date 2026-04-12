@@ -416,13 +416,30 @@ class PropertyResource extends Resource
                 Tables\Columns\TextColumn::make('city')
                     ->label('Stad')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('asking_price')
-                    ->label('Prijs')
-                    ->formatStateUsing(fn ($state, Property $record) => $state ? CurrencyHelper::format((int) $state, $record->currency) : '-')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('region')
+                    ->label('Provincie')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('asking_price_eur')
-                    ->label('EUR')
-                    ->money('EUR')
+                    ->label('Prijs')
+                    ->formatStateUsing(fn ($state) => $state ? '€ ' . number_format($state, 0, ',', '.') : '-')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('living_area_m2')
+                    ->label('m²')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('plot_area_m2')
+                    ->label('Perceel')
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) return '-';
+                        return $state >= 10000
+                            ? number_format($state / 10000, 1, ',', '.') . ' ha'
+                            : number_format($state, 0, ',', '.') . ' m²';
+                    })
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('bedrooms')
+                    ->label('Kamers')
+                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('price_per_m2')
                     ->label('€/m²')
@@ -464,27 +481,52 @@ class PropertyResource extends Resource
                 Tables\Filters\SelectFilter::make('country_id')
                     ->label('Land')
                     ->relationship('country', 'name'),
+                Tables\Filters\SelectFilter::make('region')
+                    ->label('Provincie')
+                    ->options(fn () => Property::whereNotNull('region')->where('region', '!=', '')->distinct()->orderBy('region')->pluck('region', 'region')->toArray())
+                    ->searchable(),
+                Tables\Filters\Filter::make('price_range')
+                    ->form([
+                        Forms\Components\TextInput::make('price_min')
+                            ->label('Min prijs €')
+                            ->numeric(),
+                        Forms\Components\TextInput::make('price_max')
+                            ->label('Max prijs €')
+                            ->numeric(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if ($data['price_min']) $query->where('asking_price_eur', '>=', $data['price_min']);
+                        if ($data['price_max']) $query->where('asking_price_eur', '<=', $data['price_max']);
+                    }),
+                Tables\Filters\Filter::make('area_range')
+                    ->form([
+                        Forms\Components\TextInput::make('area_min')
+                            ->label('Min m²')
+                            ->numeric(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if ($data['area_min']) $query->where('living_area_m2', '>=', $data['area_min']);
+                    }),
+                Tables\Filters\SelectFilter::make('bedrooms_min')
+                    ->label('Min kamers')
+                    ->options(['1' => '1+', '2' => '2+', '3' => '3+', '4' => '4+'])
+                    ->query(fn ($query, $data) => $data['value'] ? $query->where('bedrooms', '>=', $data['value']) : $query),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'gezien_online' => 'Gezien online',
-                        'bezichtigen' => 'Bezichtigen',
-                        'bezichtigd' => 'Bezichtigd',
                         'interesse' => 'Interesse',
+                        'bezichtigen' => 'Bezichtigen',
                         'bod_gedaan' => 'Bod gedaan',
                         'afgewezen' => 'Afgewezen',
                         'gekocht' => 'Gekocht',
                     ]),
                 Tables\Filters\SelectFilter::make('water_type')
-                    ->options([
-                        'meer' => 'Meer',
-                        'zee' => 'Zee',
-                        'rivier' => 'Rivier',
-                        'geen' => 'Geen',
-                    ]),
+                    ->label('Water')
+                    ->options(['meer' => 'Meer', 'zee' => 'Zee', 'rivier' => 'Rivier']),
                 Tables\Filters\TernaryFilter::make('has_sauna')
                     ->label('Sauna'),
-                Tables\Filters\TernaryFilter::make('has_jetty')
-                    ->label('Steiger'),
+                Tables\Filters\TernaryFilter::make('has_guest_house')
+                    ->label('Gastenverblijf'),
             ])
             ->actions([
                 Actions\EditAction::make(),

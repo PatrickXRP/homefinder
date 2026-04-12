@@ -28,6 +28,9 @@ class CurrencyHelper
 
     public static function format(int $amount, string $currency): string
     {
+        if (strtoupper($currency) === 'EUR') {
+            return '€ ' . number_format($amount, 0, ',', '.');
+        }
         return strtoupper($currency) . ' ' . number_format($amount, 0, ',', '.');
     }
 
