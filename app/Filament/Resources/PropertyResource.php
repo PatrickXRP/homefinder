@@ -494,7 +494,7 @@ class PropertyResource extends Resource
                     ->date('d-m-Y')
                     ->sortable(),
             ])
-            ->defaultSort('added_at', 'desc')
+            ->defaultSort('asking_price_eur', 'asc')
             ->filters([
                 Tables\Filters\SelectFilter::make('country_id')
                     ->label('Land')
@@ -503,40 +503,45 @@ class PropertyResource extends Resource
                     ->label('Provincie')
                     ->options(fn () => Property::whereNotNull('region')->where('region', '!=', '')->distinct()->orderBy('region')->pluck('region', 'region')->toArray())
                     ->searchable(),
-                Tables\Filters\Filter::make('price_range')
+                Tables\Filters\SelectFilter::make('city')
+                    ->label('Stad')
+                    ->options(fn () => Property::whereNotNull('city')->where('city', '!=', '')->distinct()->orderBy('city')->pluck('city', 'city')->toArray())
+                    ->searchable(),
+                Tables\Filters\Filter::make('price_min')
                     ->form([
-                        Forms\Components\TextInput::make('price_min')
+                        Forms\Components\TextInput::make('value')
                             ->label('Min prijs €')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('price_max')
-                            ->label('Max prijs €')
-                            ->numeric(),
+                            ->numeric()
+                            ->placeholder('0'),
                     ])
-                    ->query(function ($query, array $data) {
-                        if ($data['price_min']) $query->where('asking_price_eur', '>=', $data['price_min']);
-                        if ($data['price_max']) $query->where('asking_price_eur', '<=', $data['price_max']);
-                    }),
-                Tables\Filters\Filter::make('area_range')
+                    ->query(fn ($query, array $data) => ($data['value'] ?? null) ? $query->where('asking_price_eur', '>=', $data['value']) : $query),
+                Tables\Filters\Filter::make('price_max')
                     ->form([
-                        Forms\Components\TextInput::make('area_min')
-                            ->label('Min m²')
-                            ->numeric(),
+                        Forms\Components\TextInput::make('value')
+                            ->label('Max prijs €')
+                            ->numeric()
+                            ->placeholder('60000'),
                     ])
-                    ->query(function ($query, array $data) {
-                        if ($data['area_min']) $query->where('living_area_m2', '>=', $data['area_min']);
-                    }),
+                    ->query(fn ($query, array $data) => ($data['value'] ?? null) ? $query->where('asking_price_eur', '<=', $data['value']) : $query),
+                Tables\Filters\Filter::make('area_min')
+                    ->form([
+                        Forms\Components\TextInput::make('value')
+                            ->label('Min m²')
+                            ->numeric()
+                            ->placeholder('0'),
+                    ])
+                    ->query(fn ($query, array $data) => ($data['value'] ?? null) ? $query->where('living_area_m2', '>=', $data['value']) : $query),
                 Tables\Filters\SelectFilter::make('bedrooms_min')
                     ->label('Min kamers')
-                    ->options(['1' => '1+', '2' => '2+', '3' => '3+', '4' => '4+'])
-                    ->query(fn ($query, $data) => $data['value'] ? $query->where('bedrooms', '>=', $data['value']) : $query),
-                Tables\Filters\SelectFilter::make('status')
+                    ->options(['1' => '1+', '2' => '2+', '3' => '3+', '4' => '4+', '5' => '5+'])
+                    ->query(fn ($query, $data) => ($data['value'] ?? null) ? $query->where('bedrooms', '>=', $data['value']) : $query),
+                Tables\Filters\SelectFilter::make('condition')
+                    ->label('Staat')
                     ->options([
-                        'gezien_online' => 'Gezien online',
-                        'interesse' => 'Interesse',
-                        'bezichtigen' => 'Bezichtigen',
-                        'bod_gedaan' => 'Bod gedaan',
-                        'afgewezen' => 'Afgewezen',
-                        'gekocht' => 'Gekocht',
+                        'turnkey' => 'Instapklaar',
+                        'goed' => 'Goed',
+                        'matig' => 'Matig',
+                        'opknapper' => 'Opknapper',
                     ]),
                 Tables\Filters\SelectFilter::make('water_type')
                     ->label('Water')
@@ -545,7 +550,8 @@ class PropertyResource extends Resource
                     ->label('Sauna'),
                 Tables\Filters\TernaryFilter::make('has_guest_house')
                     ->label('Gastenverblijf'),
-            ])
+            ], layout: Tables\Enums\FiltersLayout::AboveContent)
+            ->filtersFormColumns(5)
             ->actions([
                 Actions\EditAction::make(),
             ])
