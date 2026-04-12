@@ -448,6 +448,11 @@ class PropertyResource extends Resource
                     ->height(45)
                     ->getStateUsing(fn (Property $record) => $record->images[0] ?? null)
                     ->defaultImageUrl('https://placehold.co/60x45/f3f4f6/9ca3af?text=📷'),
+                Tables\Columns\TextColumn::make('photo_count')
+                    ->label('📷')
+                    ->getStateUsing(fn (Property $record) => is_array($record->images) ? count($record->images) : 0)
+                    ->sortable(query: fn ($query, string $direction) => $query->orderByRaw("jsonb_array_length(COALESCE(images, '[]'::jsonb)) {$direction}"))
+                    ->color(fn ($state) => $state >= 5 ? 'success' : ($state >= 2 ? 'warning' : 'danger')),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Naam')
                     ->searchable()
