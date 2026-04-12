@@ -7,10 +7,10 @@ return [
         'name' => 'Leegte',
         'adults' => ['Patrick', 'Nathalie'],
         'children' => [
-            ['name' => 'Kind 1', 'emoji' => '🧒', 'age' => 11],
-            ['name' => 'Kind 2', 'emoji' => '👧', 'age' => 10],
-            ['name' => 'Kind 3', 'emoji' => '👧', 'age' => 8],
+            ['name' => 'Naomi', 'emoji' => '👧', 'age' => 11],
+            ['name' => 'Sam', 'emoji' => '🧒', 'age' => 10],
+            ['name' => 'Zoe', 'emoji' => '👧', 'age' => 8],
         ],
-        'base_location' => 'Dubai, UAE',
+        'base_location' => 'Nomadisch (nu: Tarragona, Spanje)',
     ],
 ];
