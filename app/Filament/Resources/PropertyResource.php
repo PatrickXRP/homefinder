@@ -390,6 +390,50 @@ class PropertyResource extends Resource
                                 ->addActionLabel('Prijswijziging toevoegen')
                                 ->columnSpanFull(),
                         ]),
+
+                    Tab::make('Swiper')
+                        ->icon('heroicon-o-hand-thumb-up')
+                        ->schema([
+                            Forms\Components\Placeholder::make('swipe_results')
+                                ->label('')
+                                ->content(function (?Property $record) {
+                                    if (!$record) return 'Sla eerst op.';
+                                    $swipes = \App\Models\PhotoSwipe::where('property_id', $record->id)->get();
+                                    if ($swipes->isEmpty()) return 'Nog geen swipe data voor deze woning.';
+
+                                    $byKid = $swipes->groupBy('kid_name');
+                                    $ratingEmojis = ['super_tof' => '😍', 'leuk' => '😊', 'gaat_wel' => '😐', 'niet_leuk' => '😕', 'bah' => '👎'];
+                                    $ratingValues = ['super_tof' => 5, 'leuk' => 4, 'gaat_wel' => 3, 'niet_leuk' => 2, 'bah' => 1];
+
+                                    $rows = $byKid->map(function ($kidSwipes, $name) use ($ratingEmojis, $ratingValues) {
+                                        $avg = round($kidSwipes->avg(fn ($s) => $ratingValues[$s->rating] ?? 3), 1);
+                                        $liked = $kidSwipes->filter(fn ($s) => in_array($s->rating, ['super_tof', 'leuk']))->count();
+                                        $total = $kidSwipes->count();
+                                        $breakdown = $kidSwipes->groupBy('rating')->map(fn ($g, $r) => ($ratingEmojis[$r] ?? $r) . ' ' . $g->count())->join(' · ');
+                                        $color = $avg >= 4 ? '#22c55e' : ($avg >= 3 ? '#f59e0b' : '#ef4444');
+                                        return "<tr>
+                                            <td class='px-3 py-2 font-medium'>{$name}</td>
+                                            <td class='px-3 py-2 text-center'><strong style='color:{$color}'>{$avg}</strong> / 5</td>
+                                            <td class='px-3 py-2 text-center'>{$liked} / {$total}</td>
+                                            <td class='px-3 py-2 text-sm'>{$breakdown}</td>
+                                        </tr>";
+                                    })->join('');
+
+                                    $totalAvg = round($swipes->avg(fn ($s) => $ratingValues[$s->rating] ?? 3), 1);
+
+                                    return new \Illuminate\Support\HtmlString("
+                                        <div class='mb-3 text-center'>
+                                            <span class='text-4xl font-bold'>{$totalAvg}</span>
+                                            <span class='text-gray-500'>/ 5 gemiddeld</span>
+                                        </div>
+                                        <table class='w-full text-sm'>
+                                            <thead><tr class='border-b'><th class='px-3 py-2 text-left'>Naam</th><th class='px-3 py-2 text-center'>Score</th><th class='px-3 py-2 text-center'>Liked</th><th class='px-3 py-2 text-left'>Verdeling</th></tr></thead>
+                                            <tbody>{$rows}</tbody>
+                                        </table>
+                                    ");
+                                })
+                                ->columnSpanFull(),
+                        ]),
                 ]),
         ]);
     }
