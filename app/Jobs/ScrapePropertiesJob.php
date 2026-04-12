@@ -108,8 +108,14 @@ class ScrapePropertiesJob implements ShouldQueue
                         }
                     }
 
-                    // Merge listing + detail data (detail takes priority for empty fields)
-                    $merged = array_filter($listing) + array_filter($detail);
+                    // Merge: detail data fills in missing/default listing fields
+                    $filteredDetail = array_filter($detail);
+                    $merged = $listing;
+                    foreach ($filteredDetail as $key => $value) {
+                        if (!isset($merged[$key]) || $merged[$key] === null || $merged[$key] === 'Onbekend' || $merged[$key] === '' || $merged[$key] === 0) {
+                            $merged[$key] = $value;
+                        }
+                    }
 
                     // Calculate price from merged data
                     $askingPrice = $merged['asking_price'] ?? null;
