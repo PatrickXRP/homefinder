@@ -25,11 +25,11 @@
 
         <div id="kid-select" class="grid grid-cols-2 gap-4">
             @foreach($kids as $kid)
-                <button onclick="selectKid('{{ $kid['name'] }}', '{{ $kid['emoji'] }}', '{{ $kid['color'] }}')"
+                <button onclick="selectKid('{{ $kid->name }}', '{{ $kid->emoji }}', '{{ $kid->color }}')"
                     class="kid-btn flex flex-col items-center p-6 rounded-3xl bg-white/10 backdrop-blur border-2 border-white/20 hover:bg-white/20 hover:border-white/40 cursor-pointer">
-                    <span class="text-6xl mb-2">{{ $kid['emoji'] }}</span>
-                    <span class="text-white font-bold text-xl">{{ $kid['name'] }}</span>
-                    @if($kid['age'])<span class="text-white/60 text-sm">{{ $kid['age'] }} jaar</span>@endif
+                    <span class="text-6xl mb-2">{{ $kid->emoji }}</span>
+                    <span class="text-white font-bold text-xl">{{ $kid->name }}</span>
+                    @if($kid->age)<span class="text-white/60 text-sm">{{ $kid->age }} jaar</span>@endif
                 </button>
             @endforeach
         </div>

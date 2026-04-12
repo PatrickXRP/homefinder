@@ -2,55 +2,76 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KidsAccount;
 use App\Models\PhotoSwipe;
 use App\Models\Property;
 use Illuminate\Http\Request;
 
 class KidsController extends Controller
 {
-    private const KIDS = [
-        ['name' => 'Naomi', 'pin' => '1111', 'emoji' => '👧', 'age' => 11, 'color' => '#ec4899'],
-        ['name' => 'Sam', 'pin' => '2222', 'emoji' => '🧒', 'age' => 10, 'color' => '#3b82f6'],
-        ['name' => 'Zoe', 'pin' => '3333', 'emoji' => '👧', 'age' => 8, 'color' => '#a855f7'],
-        ['name' => 'Nathalie', 'pin' => '4444', 'emoji' => '👩', 'age' => null, 'color' => '#f59e0b'],
-        ['name' => 'Patrick', 'pin' => '5555', 'emoji' => '👨', 'age' => null, 'color' => '#10b981'],
-    ];
-
     public function login()
     {
-        return view('kids.login', ['kids' => self::KIDS]);
+        $kids = KidsAccount::where('is_active', true)->orderBy('name')->get();
+        return view('kids.login', ['kids' => $kids]);
     }
 
     public function authenticate(Request $request)
     {
-        $name = $request->input('name');
-        $pin = $request->input('pin');
+        $account = KidsAccount::where('name', $request->input('name'))
+            ->where('pin', $request->input('pin'))
+            ->where('is_active', true)
+            ->first();
 
-        $kid = collect(self::KIDS)->firstWhere('name', $name);
-        if (!$kid || $kid['pin'] !== $pin) {
+        if (!$account) {
             return back()->with('error', 'Verkeerde PIN!');
         }
 
-        session(['kid_name' => $kid['name'], 'kid_emoji' => $kid['emoji'], 'kid_pin' => $kid['pin'], 'kid_color' => $kid['color']]);
-        return redirect('/kids/swipe');
+        session([
+            'kid_id' => $account->id,
+            'kid_name' => $account->name,
+            'kid_emoji' => $account->emoji,
+            'kid_pin' => $account->pin,
+            'kid_color' => $account->color,
+        ]);
+
+        // Redirect to first available module
+        if ($account->module_photo_swiper) return redirect('/kids/swipe?mode=photo');
+        if ($account->module_property_swiper) return redirect('/kids/swipe?mode=property');
+        if ($account->module_property_overview) return redirect('/kids/huizen');
+        return redirect('/kids');
     }
 
     public function logout()
     {
-        session()->forget(['kid_name', 'kid_emoji', 'kid_pin', 'kid_color']);
+        session()->forget(['kid_id', 'kid_name', 'kid_emoji', 'kid_pin', 'kid_color']);
         return redirect('/kids');
     }
 
     public function swipe(Request $request)
     {
-        $kidName = session('kid_name');
-        if (!$kidName) return redirect('/kids');
+        $account = $this->getAccount();
+        if (!$account) return redirect('/kids');
 
-        // Get ALL photo URLs from all properties
-        $properties = Property::whereNotNull('images')
-            ->where('asking_price_eur', '>', 0)
-            ->get();
+        $mode = $request->query('mode', session('kid_mode', 'photo'));
 
+        // Check module access
+        if ($mode === 'photo' && !$account->module_photo_swiper) $mode = 'property';
+        if ($mode === 'property' && !$account->module_property_swiper) $mode = 'photo';
+        session(['kid_mode' => $mode]);
+
+        // Get filtered properties
+        $properties = $account->filteredProperties()->get();
+
+        if ($mode === 'photo') {
+            return $this->photoSwipe($account, $properties, $mode);
+        } else {
+            return $this->propertySwipe($account, $properties, $mode);
+        }
+    }
+
+    private function photoSwipe(KidsAccount $account, $properties, string $mode)
+    {
+        // Build all photos list
         $allPhotos = [];
         foreach ($properties as $prop) {
             if (!is_array($prop->images)) continue;
@@ -67,11 +88,9 @@ class KidsController extends Controller
             }
         }
 
-        // Shuffle deterministically per kid
         shuffle($allPhotos);
 
-        // Remove already swiped
-        $swiped = PhotoSwipe::where('kid_name', $kidName)->pluck('image_url')->toArray();
+        $swiped = PhotoSwipe::where('kid_name', $account->name)->pluck('image_url')->toArray();
         $remaining = collect($allPhotos)->reject(fn ($p) => in_array($p['image_url'], $swiped))->values();
 
         $current = $remaining->first();
@@ -79,29 +98,52 @@ class KidsController extends Controller
         $swipedCount = count($swiped);
         $round = $totalPhotos > 0 ? (int) floor($swipedCount / $totalPhotos) + 1 : 1;
 
-        // If all done, start round 2 (reset)
         if ($remaining->isEmpty() && $totalPhotos > 0) {
             $round++;
             $current = $allPhotos[0] ?? null;
         }
 
-        $mode = $request->query('mode', session('kid_mode', 'photo'));
-        session(['kid_mode' => $mode]);
+        return view('kids.swipe', compact('current', 'totalPhotos', 'swipedCount', 'round', 'mode', 'account'));
+    }
 
-        return view('kids.swipe', compact('current', 'totalPhotos', 'swipedCount', 'round', 'mode'));
+    private function propertySwipe(KidsAccount $account, $properties, string $mode)
+    {
+        $swiped = PhotoSwipe::where('kid_name', $account->name)
+            ->distinct('property_id')
+            ->pluck('property_id')
+            ->toArray();
+
+        $remaining = $properties->reject(fn ($p) => in_array($p->id, $swiped))->shuffle();
+        $current = $remaining->first();
+        $totalProps = $properties->count();
+        $swipedCount = count(array_unique($swiped));
+
+        $currentPhotos = [];
+        if ($current && is_array($current->images)) {
+            $currentPhotos = $current->images;
+        }
+
+        return view('kids.swipe-property', [
+            'current' => $current,
+            'currentPhotos' => $currentPhotos,
+            'totalProps' => $totalProps,
+            'swipedCount' => $swipedCount,
+            'mode' => $mode,
+            'account' => $account,
+        ]);
     }
 
     public function doSwipe(Request $request)
     {
-        $kidName = session('kid_name');
-        if (!$kidName) return redirect('/kids');
+        $account = $this->getAccount();
+        if (!$account) return redirect('/kids');
 
         PhotoSwipe::create([
             'property_id' => $request->input('property_id'),
-            'kid_name' => $kidName,
-            'kid_pin' => session('kid_pin'),
+            'kid_name' => $account->name,
+            'kid_pin' => $account->pin,
             'photo_index' => $request->input('photo_index', 0),
-            'image_url' => $request->input('image_url'),
+            'image_url' => $request->input('image_url', ''),
             'rating' => $request->input('rating'),
         ]);
 
@@ -110,13 +152,16 @@ class KidsController extends Controller
 
     public function huizen()
     {
-        $kidName = session('kid_name');
-        if (!$kidName) return redirect('/kids');
+        $account = $this->getAccount();
+        if (!$account) return redirect('/kids');
 
-        // Get liked properties (grouped by property, avg score)
+        if (!$account->module_property_overview && !$account->module_property_swiper) {
+            return redirect('/kids/swipe');
+        }
+
         $ratingValues = ['super_tof' => 5, 'leuk' => 4, 'gaat_wel' => 3, 'niet_leuk' => 2, 'bah' => 1];
 
-        $swipes = PhotoSwipe::where('kid_name', $kidName)
+        $swipes = PhotoSwipe::where('kid_name', $account->name)
             ->with('property.country')
             ->get()
             ->groupBy('property_id');
@@ -124,15 +169,26 @@ class KidsController extends Controller
         $properties = $swipes->map(function ($group) use ($ratingValues) {
             $avg = $group->avg(fn ($s) => $ratingValues[$s->rating] ?? 3);
             $liked = $group->filter(fn ($s) => in_array($s->rating, ['super_tof', 'leuk']))->count();
-            $total = $group->count();
             return [
                 'property' => $group->first()->property,
                 'avg' => round($avg, 1),
                 'liked_photos' => $liked,
-                'total_photos' => $total,
+                'total_photos' => $group->count(),
             ];
         })->sortByDesc('avg')->values();
 
-        return view('kids.huizen', compact('properties'));
+        // If overview module enabled, also show all filtered properties
+        $allProperties = $account->module_property_overview
+            ? $account->filteredProperties()->with('country')->get()
+            : collect();
+
+        return view('kids.huizen', compact('properties', 'account', 'allProperties'));
+    }
+
+    private function getAccount(): ?KidsAccount
+    {
+        $id = session('kid_id');
+        if (!$id) return null;
+        return KidsAccount::where('id', $id)->where('is_active', true)->first();
     }
 }

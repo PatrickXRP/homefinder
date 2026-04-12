@@ -22,9 +22,15 @@
             <span class="text-white font-bold text-sm">{{ session('kid_name') }}</span>
         </div>
         <div class="flex gap-1.5">
-            <a href="/kids/swipe?mode=photo" class="px-2.5 py-1 rounded-full text-xs font-medium {{ $mode === 'photo' ? 'bg-white text-black' : 'bg-white/20 text-white' }}">📸</a>
-            <a href="/kids/swipe?mode=specs" class="px-2.5 py-1 rounded-full text-xs font-medium {{ $mode === 'specs' ? 'bg-white text-black' : 'bg-white/20 text-white' }}">📊</a>
-            <a href="/kids/huizen" class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/30 text-yellow-300">🏆</a>
+            @if($account->module_photo_swiper)
+                <a href="/kids/swipe?mode=photo" class="px-2.5 py-1 rounded-full text-xs font-medium {{ $mode === 'photo' ? 'bg-white text-black' : 'bg-white/20 text-white' }}">📸</a>
+            @endif
+            @if($account->module_property_swiper)
+                <a href="/kids/swipe?mode=property" class="px-2.5 py-1 rounded-full text-xs font-medium {{ $mode === 'property' ? 'bg-white text-black' : 'bg-white/20 text-white' }}">🏠</a>
+            @endif
+            @if($account->module_property_overview || $account->module_property_swiper)
+                <a href="/kids/huizen" class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/30 text-yellow-300">🏆</a>
+            @endif
         </div>
         <a href="/kids/logout" class="text-white/30 text-xs">✕</a>
     </div>
