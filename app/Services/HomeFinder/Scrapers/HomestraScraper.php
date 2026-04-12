@@ -138,10 +138,18 @@ class HomestraScraper extends BasePropertyScraper
             'images' => [],
         ];
 
-        // Title from h3
+        // Title from h3 — truncate long marketing titles
         $h3 = $xpath->query('.//h3', $link)->item(0);
         if ($h3) {
-            $data['name'] = trim($h3->textContent);
+            $title = trim($h3->textContent);
+            // Keep max 80 chars, cut at last word
+            if (mb_strlen($title) > 80) {
+                $title = mb_substr($title, 0, 77);
+                $lastSpace = mb_strrpos($title, ' ');
+                if ($lastSpace) $title = mb_substr($title, 0, $lastSpace);
+                $title .= '...';
+            }
+            $data['name'] = $title;
         }
 
         // Image
@@ -179,9 +187,17 @@ class HomestraScraper extends BasePropertyScraper
             $data['region'] = $addr['addressRegion'] ?? null;
         }
 
-        // Name
-        if (isset($json['name'])) {
-            $data['name'] = $json['name'];
+        // Name — JSON-LD 'name' is usually the address, not a good display name
+        // Only use it if we don't have a name yet, and prefer generating from city
+        if (isset($json['name']) && empty($data['name'])) {
+            // Use city + region as name instead of full address
+            $city = $data['city'] ?? $json['address']['addressLocality'] ?? null;
+            $region = $data['region'] ?? $json['address']['addressRegion'] ?? null;
+            if ($city) {
+                $data['name'] = 'Stuga in ' . $city . ($region ? ', ' . $region : '');
+            } else {
+                $data['name'] = $json['name'];
+            }
         }
 
         // Price

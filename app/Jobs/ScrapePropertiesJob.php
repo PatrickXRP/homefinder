@@ -60,6 +60,9 @@ class ScrapePropertiesJob implements ShouldQueue
             $created = 0;
             $updated = 0;
 
+            // Get max budget from active scenario
+            $maxBudget = \App\Models\BudgetScenario::where('is_active', true)->value('purchase_budget_eur') ?? 60000;
+
             foreach ($listings as $listing) {
                 if (empty($listing['external_id'])) continue;
 
@@ -118,6 +121,12 @@ class ScrapePropertiesJob implements ShouldQueue
                     $pricePerM2Merged = ($askingPriceEur && $livingArea && $livingArea > 0)
                         ? (int) round($askingPriceEur / $livingArea)
                         : ($merged['price_per_m2'] ?? null);
+
+                    // Skip properties above budget (with 20% margin for negotiation)
+                    if ($askingPriceEur && $askingPriceEur > $maxBudget * 1.2) {
+                        Log::debug("ScrapePropertiesJob: Skipping {$merged['name']} — €{$askingPriceEur} above budget");
+                        continue;
+                    }
 
                     Property::create([
                         'country_id' => $source->country_id,
