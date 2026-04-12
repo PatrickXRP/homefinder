@@ -18,7 +18,10 @@ php artisan db:seed --class=WishSeeder --force 2>&1 || true
 php artisan db:seed --class=CountrySeeder --force 2>&1 || true
 php artisan db:seed --class=BudgetSeeder --force 2>&1 || true
 
-# Cache config
+# Publish Filament assets
+php artisan filament:assets 2>&1 || true
+
+# Cache config (AFTER assets)
 php artisan config:cache 2>&1 || true
 php artisan route:cache 2>&1 || true
 php artisan view:cache 2>&1 || true
