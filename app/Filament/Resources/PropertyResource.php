@@ -424,6 +424,24 @@ class PropertyResource extends Resource
                     ->label('Prijs')
                     ->formatStateUsing(fn ($state) => $state ? '€ ' . number_format($state, 0, ',', '.') : '-')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('local_price')
+                    ->label('Lokaal')
+                    ->getStateUsing(function (Property $record) {
+                        if (!$record->asking_price_eur || !$record->country) return null;
+                        $currencyMap = [
+                            'SE' => 'SEK', 'NO' => 'NOK', 'PL' => 'PLN', 'HU' => 'HUF',
+                            'JP' => 'JPY', 'AR' => 'ARS', 'PY' => 'PYG', 'RS' => 'RSD',
+                            'GE' => 'GEL', 'MK' => 'MKD', 'HR' => 'HRK',
+                        ];
+                        $code = $record->country->code ?? '';
+                        $cur = $currencyMap[$code] ?? null;
+                        if (!$cur) return null; // EUR countries don't need conversion
+                        $rate = CurrencyHelper::RATES[$cur] ?? null;
+                        if (!$rate || $rate == 1.0) return null;
+                        $local = (int) round($record->asking_price_eur / $rate);
+                        return $cur . ' ' . number_format($local, 0, ',', '.');
+                    })
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('living_area_m2')
                     ->label('m²')
                     ->numeric()
