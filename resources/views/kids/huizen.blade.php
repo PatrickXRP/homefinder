@@ -18,15 +18,30 @@
             <span class="text-2xl">{{ $account->emoji }}</span>
             <span class="text-white font-bold">Huizen</span>
         </div>
-        <div class="flex gap-2">
-            @if($account->module_photo_swiper || $account->module_property_swiper)
-                <a href="/kids/swipe" class="px-4 py-2 rounded-full bg-white/20 text-white text-sm font-medium">📸 Swipen</a>
-            @endif
-            <a href="/kids/logout" class="text-white/40 text-sm py-2">Uit</a>
-        </div>
+        <a href="/kids/logout" class="text-white/40 text-sm">Uit</a>
     </div>
 
-    <div class="p-3 max-w-6xl mx-auto">
+    {{-- Bottom nav --}}
+    <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur border-t border-white/10 z-20 flex justify-around py-2 px-4">
+        @if($account->module_photo_swiper)
+            <a href="/kids/swipe?mode=photo" class="flex flex-col items-center gap-0.5 text-white/60 hover:text-white py-1 px-3">
+                <span class="text-2xl">📸</span>
+                <span class="text-[10px]">Foto's</span>
+            </a>
+        @endif
+        @if($account->module_property_swiper)
+            <a href="/kids/swipe?mode=property" class="flex flex-col items-center gap-0.5 text-white/60 hover:text-white py-1 px-3">
+                <span class="text-2xl">🏠</span>
+                <span class="text-[10px]">Woningen</span>
+            </a>
+        @endif
+        <a href="/kids/huizen" class="flex flex-col items-center gap-0.5 text-yellow-400 py-1 px-3">
+            <span class="text-2xl">🏆</span>
+            <span class="text-[10px]">Huizen</span>
+        </a>
+    </div>
+
+    <div class="p-3 pb-20 max-w-6xl mx-auto">
         {{-- Tab bar --}}
         @php $tab = request('tab', 'favorieten'); @endphp
         <div class="flex gap-2 mb-4 overflow-x-auto">

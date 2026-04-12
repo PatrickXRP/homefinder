@@ -155,46 +155,71 @@
     </div>
 
     {{-- Lightbox --}}
-    <div id="lightbox" class="fixed inset-0 bg-black z-50 items-center justify-center" onclick="closeLightbox(event)">
-        <img id="lb-img" src="" class="max-w-full max-h-full object-contain">
-        <div class="absolute top-4 right-4 text-white text-3xl cursor-pointer" onclick="closeLightbox()">✕</div>
-        <div class="absolute bottom-4 left-0 right-0 text-center text-white/60 text-sm" id="lb-counter"></div>
-        <div class="absolute left-0 top-0 bottom-0 w-1/3 cursor-pointer" onclick="lbPrev(event)"></div>
-        <div class="absolute right-0 top-0 bottom-0 w-1/3 cursor-pointer" onclick="lbNext(event)"></div>
+    <div id="lightbox" class="fixed inset-0 bg-black/95 z-50 hidden flex-col items-center justify-center">
+        {{-- Close button --}}
+        <button onclick="closeLightbox()" class="absolute top-4 right-4 z-60 w-12 h-12 flex items-center justify-center bg-white/20 rounded-full text-white text-2xl">✕</button>
+
+        {{-- Counter --}}
+        <div class="absolute top-4 left-4 text-white/60 text-sm z-60" id="lb-counter"></div>
+
+        {{-- Image --}}
+        <img id="lb-img" src="" class="max-w-[90vw] max-h-[80vh] object-contain">
+
+        {{-- Nav buttons --}}
+        <button onclick="lbPrev()" id="lb-prev" class="absolute left-2 top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-white/10 rounded-full text-white text-3xl hover:bg-white/20">‹</button>
+        <button onclick="lbNext()" id="lb-next" class="absolute right-2 top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-white/10 rounded-full text-white text-3xl hover:bg-white/20">›</button>
     </div>
 
     <script>
         const images = @json($images);
         let lbIdx = 0;
+        const lb = document.getElementById('lightbox');
 
         function openLightbox(idx) {
             lbIdx = idx;
             document.getElementById('lb-img').src = images[idx];
             document.getElementById('lb-counter').textContent = (idx + 1) + ' / ' + images.length;
-            document.getElementById('lightbox').classList.add('active');
+            document.getElementById('lb-prev').style.visibility = idx === 0 ? 'hidden' : 'visible';
+            document.getElementById('lb-next').style.visibility = idx === images.length - 1 ? 'hidden' : 'visible';
+            lb.classList.remove('hidden');
+            lb.classList.add('flex');
             document.body.style.overflow = 'hidden';
         }
 
-        function closeLightbox(e) {
-            if (e && e.target.tagName === 'IMG') return;
-            document.getElementById('lightbox').classList.remove('active');
+        function closeLightbox() {
+            lb.classList.add('hidden');
+            lb.classList.remove('flex');
             document.body.style.overflow = '';
         }
 
-        function lbNext(e) {
-            e.stopPropagation();
+        function lbNext() {
             if (lbIdx < images.length - 1) openLightbox(lbIdx + 1);
         }
 
-        function lbPrev(e) {
-            e.stopPropagation();
+        function lbPrev() {
             if (lbIdx > 0) openLightbox(lbIdx - 1);
         }
 
+        // Close on background click (not on image or buttons)
+        lb.addEventListener('click', (e) => {
+            if (e.target === lb || e.target === document.getElementById('lb-img')) {
+                if (e.target === lb) closeLightbox();
+            }
+        });
+
+        // Touch swipe in lightbox
+        let lbStartX = 0;
+        lb.addEventListener('touchstart', (e) => { lbStartX = e.touches[0].clientX; }, { passive: true });
+        lb.addEventListener('touchend', (e) => {
+            const diff = e.changedTouches[0].clientX - lbStartX;
+            if (diff > 50) lbPrev();
+            else if (diff < -50) lbNext();
+        });
+
         document.addEventListener('keydown', (e) => {
-            if (!document.getElementById('lightbox').classList.contains('active')) return;
-            if (e.key === 'ArrowRight') lbNext(e);
-            else if (e.key === 'ArrowLeft') lbPrev(e);
+            if (lb.classList.contains('hidden')) return;
+            if (e.key === 'ArrowRight') lbNext();
+            else if (e.key === 'ArrowLeft') lbPrev();
             else if (e.key === 'Escape') closeLightbox();
         });
     </script>
