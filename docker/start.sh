@@ -21,10 +21,9 @@ php artisan db:seed --class=BudgetSeeder --force 2>&1 || true
 # Publish Filament assets
 php artisan filament:assets 2>&1 || true
 
-# Cache config (AFTER assets)
+# Cache config and routes only — NO view:cache (breaks Filament)
 php artisan config:cache 2>&1 || true
 php artisan route:cache 2>&1 || true
-php artisan view:cache 2>&1 || true
 
 # Start queue worker in background
 php artisan queue:work --sleep=3 --tries=3 --max-time=3600 &
