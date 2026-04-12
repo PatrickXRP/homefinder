@@ -185,6 +185,23 @@ class KidsController extends Controller
         return view('kids.huizen', compact('properties', 'account', 'allProperties'));
     }
 
+    public function woning(int $id)
+    {
+        $account = $this->getAccount();
+        if (!$account) return redirect('/kids');
+
+        $property = Property::with('country')->findOrFail($id);
+
+        // Get this kid's swipes for this property
+        $ratingValues = ['super_tof' => 5, 'leuk' => 4, 'gaat_wel' => 3, 'niet_leuk' => 2, 'bah' => 1];
+        $swipes = PhotoSwipe::where('kid_name', $account->name)
+            ->where('property_id', $id)
+            ->get();
+        $avg = $swipes->isNotEmpty() ? round($swipes->avg(fn ($s) => $ratingValues[$s->rating] ?? 3), 1) : null;
+
+        return view('kids.woning', compact('property', 'account', 'swipes', 'avg'));
+    }
+
     private function getAccount(): ?KidsAccount
     {
         $id = session('kid_id');
