@@ -10,10 +10,13 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Width;
 
 class EditProperty extends EditRecord
 {
     protected static string $resource = PropertyResource::class;
+
+    protected \Filament\Support\Enums\Width | string | null $maxContentWidth = Width::Full;
 
     protected function getHeaderActions(): array
     {
