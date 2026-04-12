@@ -153,6 +153,69 @@ class KidsAccountResource extends Resource
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
+                    Actions\BulkAction::make('enable_photo_swiper')
+                        ->label('📸 Foto Swiper AAN')
+                        ->icon('heroicon-o-check')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['module_photo_swiper' => true])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('disable_photo_swiper')
+                        ->label('📸 Foto Swiper UIT')
+                        ->icon('heroicon-o-x-mark')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['module_photo_swiper' => false])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('enable_property_swiper')
+                        ->label('🏠 Woning Swiper AAN')
+                        ->icon('heroicon-o-check')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['module_property_swiper' => true])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('disable_property_swiper')
+                        ->label('🏠 Woning Swiper UIT')
+                        ->icon('heroicon-o-x-mark')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['module_property_swiper' => false])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('enable_overview')
+                        ->label('📋 Overzicht AAN')
+                        ->icon('heroicon-o-check')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['module_property_overview' => true])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('disable_overview')
+                        ->label('📋 Overzicht UIT')
+                        ->icon('heroicon-o-x-mark')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['module_property_overview' => false])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('set_countries')
+                        ->label('🌍 Landen instellen')
+                        ->icon('heroicon-o-globe-europe-africa')
+                        ->form([
+                            Forms\Components\Select::make('allowed_country_ids')
+                                ->label('Landen')
+                                ->multiple()
+                                ->options(fn () => Country::orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => $c->flag_emoji . ' ' . $c->name])->toArray())
+                                ->searchable()
+                                ->helperText('Laat leeg = alle landen'),
+                        ])
+                        ->action(fn ($records, array $data) => $records->each(fn ($r) => $r->update(['allowed_country_ids' => $data['allowed_country_ids'] ?: null])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('set_price')
+                        ->label('💰 Prijs filter instellen')
+                        ->icon('heroicon-o-banknotes')
+                        ->form([
+                            Forms\Components\TextInput::make('filter_price_min')->label('Min prijs €')->numeric(),
+                            Forms\Components\TextInput::make('filter_price_max')->label('Max prijs €')->numeric(),
+                        ])
+                        ->action(fn ($records, array $data) => $records->each(fn ($r) => $r->update([
+                            'filter_price_min' => $data['filter_price_min'] ?: null,
+                            'filter_price_max' => $data['filter_price_max'] ?: null,
+                        ])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('reset_swipes')
+                        ->label('🗑️ Swipes wissen')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalDescription('Alle swipe-data van de geselecteerde accounts wordt gewist.')
+                        ->action(fn ($records) => $records->each(fn ($r) => \App\Models\PhotoSwipe::where('kid_name', $r->name)->delete()))
+                        ->deselectRecordsAfterCompletion(),
                     Actions\DeleteBulkAction::make(),
                 ]),
             ]);
