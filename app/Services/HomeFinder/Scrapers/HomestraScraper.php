@@ -268,15 +268,29 @@ class HomestraScraper extends BasePropertyScraper
     {
         $images = [];
 
-        // Match all Google Cloud Storage image URLs
+        // Match GCS URLs — both direct and CDN-wrapped
+        // CDN format: homestra.com/cdn-cgi/image/width=256,quality=65/https://storage.googleapis.com/...
+        // Direct format: https://storage.googleapis.com/homestra-images/property-image-UUID-TIMESTAMP.jpg
         preg_match_all(
-            '/https:\/\/storage\.googleapis\.com\/homestra-images\/property-image-[a-f0-9-]+-\d+\.jpg/',
+            '/(https:\/\/storage\.googleapis\.com\/homestra-images\/property-image-[a-f0-9-]+-\d+\.jpg)/',
             $html,
             $matches
         );
 
-        if (!empty($matches[0])) {
-            $images = array_values(array_unique($matches[0]));
+        if (!empty($matches[1])) {
+            $images = array_values(array_unique($matches[1]));
+        }
+
+        // Also check img src attributes for CDN-wrapped URLs
+        if (empty($images)) {
+            preg_match_all(
+                '/src=["\'](?:https?:\/\/[^"\']*?\/cdn-cgi\/image\/[^"\']*?\/)?(https:\/\/storage\.googleapis\.com\/homestra-images\/[^"\']+)["\']/',
+                $html,
+                $matches2
+            );
+            if (!empty($matches2[1])) {
+                $images = array_values(array_unique($matches2[1]));
+            }
         }
 
         if (!empty($images)) {
