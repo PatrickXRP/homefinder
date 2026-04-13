@@ -575,20 +575,20 @@ class PropertyResource extends Resource
                 Tables\Filters\SelectFilter::make('country_id')
                     ->label('Land')
                     ->multiple()
-                    ->relationship('country', 'name'),
+                    ->options(fn () => \App\Models\Country::whereIn('id', Property::where('status', '!=', 'archief')->distinct()->pluck('country_id'))->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => $c->flag_emoji . ' ' . $c->name])->toArray()),
                 Tables\Filters\SelectFilter::make('region')
                     ->label('Provincie')
                     ->multiple()
-                    ->options(fn () => Property::whereNotNull('region')->where('region', '!=', '')->distinct()->orderBy('region')->pluck('region', 'region')->toArray())
+                    ->options(fn () => Property::where('status', '!=', 'archief')->whereNotNull('region')->where('region', '!=', '')->distinct()->orderBy('region')->pluck('region', 'region')->toArray())
                     ->searchable(),
                 Tables\Filters\SelectFilter::make('city')
                     ->label('Stad')
                     ->multiple()
-                    ->options(fn () => Property::whereNotNull('city')->where('city', '!=', '')->distinct()->orderBy('city')->pluck('city', 'city')->toArray())
+                    ->options(fn () => Property::where('status', '!=', 'archief')->whereNotNull('city')->where('city', '!=', '')->distinct()->orderBy('city')->pluck('city', 'city')->toArray())
                     ->searchable(),
                 Tables\Filters\SelectFilter::make('kid_likes')
                     ->label('Kind likes')
-                    ->options(fn () => \App\Models\KidsAccount::where('is_active', true)->pluck('name', 'name')->toArray())
+                    ->options(fn () => \App\Models\KidsAccount::where('is_active', true)->whereIn('name', \App\Models\PhotoSwipe::distinct()->pluck('kid_name'))->pluck('name', 'name')->toArray())
                     ->query(function ($query, array $data) {
                         if (empty($data['value'])) return;
                         $query->whereIn('id', function ($sub) use ($data) {
@@ -601,7 +601,7 @@ class PropertyResource extends Resource
                     }),
                 Tables\Filters\SelectFilter::make('kid_dislikes')
                     ->label('Kind dislikes')
-                    ->options(fn () => \App\Models\KidsAccount::where('is_active', true)->pluck('name', 'name')->toArray())
+                    ->options(fn () => \App\Models\KidsAccount::where('is_active', true)->whereIn('name', \App\Models\PhotoSwipe::distinct()->pluck('kid_name'))->pluck('name', 'name')->toArray())
                     ->query(function ($query, array $data) {
                         if (empty($data['value'])) return;
                         $query->whereIn('id', function ($sub) use ($data) {
@@ -642,19 +642,16 @@ class PropertyResource extends Resource
                     ->query(fn ($query, $data) => ($data['value'] ?? null) ? $query->where('bedrooms', '>=', $data['value']) : $query),
                 Tables\Filters\SelectFilter::make('condition')
                     ->label('Staat')
-                    ->options([
-                        'turnkey' => 'Instapklaar',
-                        'goed' => 'Goed',
-                        'matig' => 'Matig',
-                        'opknapper' => 'Opknapper',
-                    ]),
+                    ->options(fn () => Property::where('status', '!=', 'archief')->whereNotNull('condition')->distinct()->pluck('condition', 'condition')->mapWithKeys(fn ($v) => [$v => match($v) { 'turnkey' => 'Instapklaar', 'goed' => 'Goed', 'matig' => 'Matig', 'opknapper' => 'Opknapper', 'slooprijp' => 'Slooprijp', default => $v }])->toArray()),
                 Tables\Filters\SelectFilter::make('water_type')
                     ->label('Water')
-                    ->options(['meer' => 'Meer', 'zee' => 'Zee', 'rivier' => 'Rivier']),
+                    ->options(fn () => Property::where('status', '!=', 'archief')->whereNotNull('water_type')->where('water_type', '!=', 'geen')->distinct()->pluck('water_type', 'water_type')->mapWithKeys(fn ($v) => [$v => match($v) { 'meer' => 'Meer', 'zee' => 'Zee', 'rivier' => 'Rivier', default => $v }])->toArray()),
                 Tables\Filters\TernaryFilter::make('has_sauna')
-                    ->label('Sauna'),
+                    ->label('Sauna')
+                    ->visible(fn () => Property::where('status', '!=', 'archief')->where('has_sauna', true)->exists()),
                 Tables\Filters\TernaryFilter::make('has_guest_house')
-                    ->label('Gastenverblijf'),
+                    ->label('Gastenverblijf')
+                    ->visible(fn () => Property::where('status', '!=', 'archief')->where('has_guest_house', true)->exists()),
             ], layout: Tables\Enums\FiltersLayout::AboveContent)
             ->filtersFormColumns(5)
             ->actions([
