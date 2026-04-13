@@ -654,6 +654,9 @@ class PropertyResource extends Resource
                     ->visible(fn () => Property::where('status', '!=', 'archief')->where('has_guest_house', true)->exists()),
             ], layout: Tables\Enums\FiltersLayout::AboveContent)
             ->filtersFormColumns(5)
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->persistSearchInSession()
             ->actions([
                 Actions\Action::make('archive')
                     ->label('Archiveer')
