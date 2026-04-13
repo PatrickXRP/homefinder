@@ -172,6 +172,7 @@ class PropertyResource extends Resource
                                     'bod_gedaan' => '💰 Bod gedaan',
                                     'afgewezen' => '❌ Afgewezen',
                                     'gekocht' => '🎉 Gekocht',
+                                    'archief' => '📦 Archief',
                                 ])
                                 ->required()
                                 ->default('gezien_online'),
@@ -540,6 +541,7 @@ class PropertyResource extends Resource
                         'bod_gedaan' => 'primary',
                         'afgewezen' => 'danger',
                         'gekocht' => 'success',
+                        'archief' => 'gray',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state) => match ($state) {
@@ -550,6 +552,7 @@ class PropertyResource extends Resource
                         'bod_gedaan' => '💰 Bod',
                         'afgewezen' => '❌ Afgewezen',
                         'gekocht' => '🎉 Gekocht',
+                        'archief' => '📦 Archief',
                         default => $state,
                     }),
                 Tables\Columns\TextColumn::make('added_at')
@@ -558,7 +561,17 @@ class PropertyResource extends Resource
                     ->sortable(),
             ])
             ->defaultSort('asking_price_eur', 'asc')
+            ->modifyQueryUsing(fn ($query) => $query->where('status', '!=', 'archief'))
             ->filters([
+                Tables\Filters\TernaryFilter::make('show_archived')
+                    ->label('Archief tonen')
+                    ->trueLabel('Alleen archief')
+                    ->falseLabel('Verberg archief')
+                    ->queries(
+                        true: fn ($query) => $query->withoutGlobalScopes()->where('status', 'archief'),
+                        false: fn ($query) => $query,
+                        blank: fn ($query) => $query,
+                    ),
                 Tables\Filters\SelectFilter::make('country_id')
                     ->label('Land')
                     ->multiple()
@@ -645,10 +658,38 @@ class PropertyResource extends Resource
             ], layout: Tables\Enums\FiltersLayout::AboveContent)
             ->filtersFormColumns(5)
             ->actions([
+                Actions\Action::make('archive')
+                    ->label('Archiveer')
+                    ->icon('heroicon-o-archive-box')
+                    ->color('gray')
+                    ->visible(fn (Property $record) => $record->status !== 'archief')
+                    ->action(fn (Property $record) => $record->update(['status' => 'archief'])),
+                Actions\Action::make('unarchive')
+                    ->label('Herstel')
+                    ->icon('heroicon-o-archive-box-arrow-down')
+                    ->color('success')
+                    ->visible(fn (Property $record) => $record->status === 'archief')
+                    ->action(fn (Property $record) => $record->update(['status' => 'gezien_online'])),
                 Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
+                    Actions\BulkAction::make('bulk_archive')
+                        ->label('📦 Archiveren')
+                        ->icon('heroicon-o-archive-box')
+                        ->requiresConfirmation()
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['status' => 'archief'])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('bulk_unarchive')
+                        ->label('📦 Uit archief halen')
+                        ->icon('heroicon-o-archive-box-arrow-down')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['status' => 'gezien_online'])))
+                        ->deselectRecordsAfterCompletion(),
+                    Actions\BulkAction::make('bulk_interesse')
+                        ->label('💛 Interesse')
+                        ->icon('heroicon-o-heart')
+                        ->action(fn ($records) => $records->each(fn ($r) => $r->update(['status' => 'interesse'])))
+                        ->deselectRecordsAfterCompletion(),
                     Actions\DeleteBulkAction::make(),
                 ]),
             ]);

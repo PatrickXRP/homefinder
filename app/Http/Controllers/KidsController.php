@@ -175,11 +175,12 @@ class KidsController extends Controller
                 'liked_photos' => $liked,
                 'total_photos' => $group->count(),
             ];
-        })->sortByDesc('avg')->values();
+        })->filter(fn ($p) => $p['property'] && $p['property']->status !== 'archief')
+          ->sortByDesc('avg')->values();
 
-        // If overview module enabled, also show all filtered properties
+        // If overview module enabled, also show all filtered properties (excluding archived)
         $allProperties = $account->module_property_overview
-            ? $account->filteredProperties()->with('country')->get()
+            ? $account->filteredProperties()->where('status', '!=', 'archief')->with('country')->get()
             : collect();
 
         return view('kids.huizen', compact('properties', 'account', 'allProperties'));
@@ -200,6 +201,24 @@ class KidsController extends Controller
         $avg = $swipes->isNotEmpty() ? round($swipes->avg(fn ($s) => $ratingValues[$s->rating] ?? 3), 1) : null;
 
         return view('kids.woning', compact('property', 'account', 'swipes', 'avg'));
+    }
+
+    public function archiveProperty(int $id)
+    {
+        $account = $this->getAccount();
+        if (!$account) return redirect('/kids');
+
+        Property::where('id', $id)->update(['status' => 'archief']);
+        return back();
+    }
+
+    public function unarchiveProperty(int $id)
+    {
+        $account = $this->getAccount();
+        if (!$account) return redirect('/kids');
+
+        Property::where('id', $id)->update(['status' => 'gezien_online']);
+        return back();
     }
 
     private function getAccount(): ?KidsAccount

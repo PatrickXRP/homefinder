@@ -16,6 +16,8 @@ Route::get('/kids/swipe', [KidsController::class, 'swipe']);
 Route::post('/kids/swipe', [KidsController::class, 'doSwipe']);
 Route::get('/kids/huizen', [KidsController::class, 'huizen']);
 Route::get('/kids/woning/{id}', [KidsController::class, 'woning']);
+Route::post('/kids/woning/{id}/archive', [KidsController::class, 'archiveProperty']);
+Route::post('/kids/woning/{id}/unarchive', [KidsController::class, 'unarchiveProperty']);
 
 Route::get('/auth/redirect', [VoidAuthController::class, 'redirect'])->name('voidauth.redirect');
 Route::get('/auth/callback', [VoidAuthController::class, 'callback'])->name('voidauth.callback');

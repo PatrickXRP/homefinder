@@ -33,7 +33,7 @@ class KidsAccount extends Model
      */
     public function filteredProperties()
     {
-        $query = Property::whereNotNull('images')->where('asking_price_eur', '>', 0);
+        $query = Property::whereNotNull('images')->where('asking_price_eur', '>', 0)->where('status', '!=', 'archief');
 
         if (!empty($this->allowed_country_ids)) {
             $query->whereIn('country_id', $this->allowed_country_ids);

@@ -23,7 +23,22 @@
                 <span class="text-yellow-400 font-bold">{{ $avg }}/5</span>
             @endif
         </div>
-        <a href="{{ $property->url }}" target="_blank" class="text-blue-400 text-sm">🔗 Advertentie</a>
+        <div class="flex gap-2">
+            @if($property->status !== 'archief')
+                <form method="POST" action="/kids/woning/{{ $property->id }}/archive" class="inline">
+                    @csrf
+                    <button type="submit" class="text-white/40 text-sm hover:text-red-400">📦</button>
+                </form>
+            @else
+                <form method="POST" action="/kids/woning/{{ $property->id }}/unarchive" class="inline">
+                    @csrf
+                    <button type="submit" class="text-green-400 text-sm">📦 Herstel</button>
+                </form>
+            @endif
+            @if($property->url)
+                <a href="{{ $property->url }}" target="_blank" class="text-blue-400 text-sm">🔗</a>
+            @endif
+        </div>
     </div>
 
     <div class="max-w-5xl mx-auto">
