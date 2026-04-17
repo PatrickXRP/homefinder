@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["(php.withExtensions (pe: pe.enabled ++ [pe.all.pgsql pe.all.pdo_pgsql]))", "nginx", "phpPackages.composer", "nodejs_22", "npm-9_x"]
+nixPkgs = ["(php.withExtensions (pe: pe.enabled ++ [pe.all.pgsql pe.all.pdo_pgsql]))", "nginx", "phpPackages.composer", "nodejs_22", "npm-9_x", "chromium"]
 
 [phases.install]
 cmds = ["mkdir -p /var/log/nginx && mkdir -p /var/cache/nginx", "composer install --ignore-platform-reqs", "npm i"]
@@ -13,3 +13,5 @@ cmd = "bash /app/docker/start.sh"
 [variables]
 IS_LARAVEL = "true"
 NIXPACKS_PHP_ROOT_DIR = "/app/public"
+PUPPETEER_EXECUTABLE_PATH = "/nix/var/nix/profiles/default/bin/chromium"
+PUPPETEER_SKIP_DOWNLOAD = "true"

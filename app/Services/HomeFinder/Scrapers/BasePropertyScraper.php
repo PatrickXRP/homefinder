@@ -17,10 +17,17 @@ abstract class BasePropertyScraper implements ScraperInterface
     ];
 
     protected int $maxRetries = 3;
+    public bool $usePuppeteer = false;
 
     protected function fetchPage(string $url): ?string
     {
+        // Try Puppeteer first if enabled (Cloudflare bypass)
+        if ($this->usePuppeteer) {
+            return $this->fetchWithPuppeteer($url);
+        }
+
         $lastException = null;
+        $got503 = false;
 
         for ($attempt = 1; $attempt <= $this->maxRetries; $attempt++) {
             try {
@@ -37,6 +44,10 @@ abstract class BasePropertyScraper implements ScraperInterface
                     return $response->body();
                 }
 
+                if ($response->status() === 503) {
+                    $got503 = true;
+                }
+
                 Log::warning("Scraper: HTTP {$response->status()} for {$url} (attempt {$attempt})");
             } catch (\Exception $e) {
                 $lastException = $e;
@@ -48,11 +59,57 @@ abstract class BasePropertyScraper implements ScraperInterface
             }
         }
 
+        // Cloudflare 503 — fallback to Puppeteer
+        if ($got503) {
+            Log::info("Scraper: 503 detected, falling back to Puppeteer for {$url}");
+            $html = $this->fetchWithPuppeteer($url);
+            if ($html) {
+                // Switch to Puppeteer for remaining requests this session
+                $this->usePuppeteer = true;
+                return $html;
+            }
+        }
+
         Log::error("Scraper: Failed after {$this->maxRetries} attempts for {$url}", [
             'exception' => $lastException?->getMessage(),
         ]);
 
         return null;
+    }
+
+    protected function fetchWithPuppeteer(string $url): ?string
+    {
+        $scriptPath = base_path('scripts/fetch-page.mjs');
+
+        if (!file_exists($scriptPath)) {
+            Log::warning("Scraper: Puppeteer script not found at {$scriptPath}");
+            return null;
+        }
+
+        $escapedUrl = escapeshellarg($url);
+        $cmd = "node {$scriptPath} {$escapedUrl} 45000 2>/dev/null";
+
+        $output = null;
+        $exitCode = null;
+        exec($cmd, $outputLines, $exitCode);
+
+        if ($exitCode !== 0 || empty($outputLines)) {
+            Log::warning("Scraper: Puppeteer failed for {$url} (exit {$exitCode})");
+            return null;
+        }
+
+        $html = implode("\n", $outputLines);
+
+        // Verify we got real content, not a challenge page
+        if (str_contains($html, 'Just a moment') && strlen($html) < 5000) {
+            Log::warning("Scraper: Puppeteer got Cloudflare challenge page for {$url}");
+            return null;
+        }
+
+        $this->rateLimitPause();
+        Log::info("Scraper: Puppeteer success for {$url} (" . strlen($html) . " bytes)");
+
+        return $html;
     }
 
     protected function rateLimitPause(): void
